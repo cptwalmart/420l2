@@ -17,7 +17,7 @@ void initMatrix(matrix *A, int r, int c)
     int i, j;
     for (i = 0; i < r; i++)
         for (j = 0; j < c; j++)
-            ACCESS(A, i, j) = rand() % 10 + 1;
+            ACCESS(A, i, j) = rand() % 2 + 1;
 }
 
 void printMatrix(matrix *A)
@@ -37,4 +37,16 @@ void printMatrix(matrix *A)
 int index_calc(matrix *A, int i, int j)
 {
     return INDEX(A->rows, A->cols, i, j);
+}
+
+int addMatrix(int c, int d){
+    int ans = 0;
+    ans += c + d;
+    return ans;
+}
+
+int subMatrix(int c, int d){
+    int ans = 0;
+    ans += c - d;
+    return ans;
 }

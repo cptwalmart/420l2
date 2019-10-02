@@ -46,17 +46,19 @@ int main(int argc, char **argv)
 		//initialize data fields
 		srand(time(0));
 		initMatrix(&A, A1, A2);
-		//printMatrix(&A);
+		printf("printing matrix A\n");
+		printMatrix(&A);
 		//printf("\n");
 		initMatrix(&B, B1, B2);
-		//printMatrix(&B);
+		printf("\n printing matrix b\n");
+		printMatrix(&B);
 	}
 
 	int indexcol = 0;
 	int indexrow = 0;
-	int sendArows = A.rows / cores;
-	int collength = A.cols;
-	unsigned int sendNum = collength * sendArows;
+	int sendArows = A1 / cores;
+	int colLength = A2;
+	unsigned int sendNum = colLength * sendArows;
 	//printf("%d is sendnum\n\n", sendNum);
 	int *C = malloc(sizeof(int) * (sendNum));
 	int *D = malloc(sizeof(int) * (sendNum));
@@ -71,7 +73,7 @@ int main(int argc, char **argv)
 			fflush(stdout);
 			for (i = indexrow; i < (indexrow + sendArows); i++)
 			{
-				for (j = indexcol; j < collength; j++)
+				for (j = indexcol; j < colLength; j++)
 				{
 					C[(sendArows * (i % sendArows)) + j] = A.arr[index_calc(&A, i, j)];
 				}
@@ -89,7 +91,7 @@ int main(int argc, char **argv)
 			fflush(stdout);
 			for (i = indexrow; i < (indexrow + sendArows); i++)
 			{
-				for (j = indexcol; j < collength; j++)
+				for (j = indexcol; j < colLength; j++)
 				{
 					C[(sendArows * (i % sendArows)) + j] = B.arr[index_calc(&B, i, j)];
 				}
@@ -103,9 +105,10 @@ int main(int argc, char **argv)
 	int *E = malloc(sizeof(int) * (sendNum));
 	for (i = 0; i < sendArows; i++)
 	{
-		for (j = 0; j < collength; j++)
+		for (j = 0; j < colLength; j++)
 		{
-			E[(sendArows * i) + j] = C[(sendArows * i) + j] + D[(sendArows * i) + j];
+			//E[(sendArows * i) + j] = addMatrix((C[(sendArows * i) + j]), (D[(sendArows * i) + j]));
+			E[(sendArows * i) + j] = subMatrix((C[(sendArows * i) + j]), (D[(sendArows * i) + j]));
 		}
 	}
 	MPI_Send(E, (sendNum), MPI_INT, 0, 0, world);
@@ -122,7 +125,7 @@ int main(int argc, char **argv)
 			MPI_Recv(D, (sendNum), MPI_INT, n, 0, world, &status);
 			for (i = indexrow; i < (indexrow + sendArows); i++)
 			{
-				for (j = indexcol; j < collength; j++)
+				for (j = indexcol; j < colLength; j++)
 				{
 					F.arr[index_calc(&F, i, j)] = D[(sendArows * (i % sendArows)) + j];
 				}
@@ -133,9 +136,11 @@ int main(int argc, char **argv)
 		free(F.arr);
 	}
 	free(D);
-	free(A.arr);
-	free(B.arr);
-
+	if (rank == 0)
+	{
+		free(A.arr);
+		free(B.arr);
+	}
 	MPI_Finalize();
 	return 0;
 }

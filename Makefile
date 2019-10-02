@@ -1,4 +1,4 @@
-CFLAGS=
+CFLAGS=-std=c99
 LIBS=-lm
 CC=mpicc
 all: test test2

@@ -13,4 +13,8 @@ void printMatrix(matrix *A);
 
 int index_calc(matrix *A, int i, int j);
 
+int addMatrix(int c, int d);
+
+int subMatrix(int c, int d);
+
 #endif
