@@ -6,20 +6,9 @@
 #include "mfunctions.h"
 #include <time.h>
 
-int IP(int *array, int *array2, int num_elem, int rank)
-{
-	printf("%d is array1 element, %d is array2 element, this is rank:%d\n", array[0], array2[0], rank);
-	int sum = 0;
-	for (int i = 0; i < num_elem; i++)
-	{
-		sum += array[i] + array2[i];
-	}
-	printf("%d thinks the sum is %d\n", rank, sum);
-	return sum;
-}
-
 int main(int argc, char **argv)
 {
+	//Create our matrix A1 = rows A2 = cols
 	int A1 = 20, A2 = 20, B1 = 20, B2 = 20;
 	struct matrix A;
 	struct matrix B;
@@ -53,7 +42,7 @@ int main(int argc, char **argv)
 		printf("\n printing matrix b\n");
 		printMatrix(&B);
 	}
-
+	
 	int indexcol = 0;
 	int indexrow = 0;
 	int sendArows = A1 / cores;
