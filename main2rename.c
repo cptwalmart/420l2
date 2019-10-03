@@ -26,6 +26,7 @@ int main(int argc, char **argv)
 	int ARows = 3, ACols = 3, BRows = 3, BCols = 3;
     struct matrix A;
     struct matrix B;
+	struct matrix C;
 	int SendAmount = ACols;
 	int EndMatrixSize = ARows*BCols;
 	
@@ -46,85 +47,88 @@ int main(int argc, char **argv)
     MPI_Comm_rank(world, &rank);
     MPI_Status status;
 	
+	initMatrix(&A, ARows, ACols);
+	initMatrix(&B, BRows, BCols);
+	initMatrix(&C, ARows, BCols);
+
 	if(rank==0)
 	{
-	//initialize data fields
-	srand(time(0));
-    initMatrix(&A, ARows, ACols);
-	printf("\n---------------------------\n");
-    printMatrix(&A);
-    printf("\n---------------------------\n");
-    initMatrix(&B, BRows, BCols);
-	printf("\n---------------------------\n");
-    printMatrix(&B);
-	printf("\n---------------------------\n");
-	}
-	else{
+		//initialize data fields
+		srand(time(0));
+		initMatrix(&A, ARows, ACols);
+		printf("\n---------------------------\n");
+		printMatrix(&A);
+		printf("\n---------------------------\n");
 		initMatrix(&B, BRows, BCols);
+		printf("\n---------------------------\n");
+		printMatrix(&B);
+		printf("\n---------------------------\n");
+		printf("\n---------------------------\n");
+		printMatrix(&C);
+		printf("\n---------------------------\n");
 	}
 
-    //printf("%d is SendAmount\n\n", SendAmount);
-	int * tmp = malloc(sizeof(int) * (SendAmount));
-	int * C = malloc(sizeof(int) * (EndMatrixSize));
 	int n, i, j;
 	if(rank == 0)
 	{	
 		for(n = 0; n <= LoopTotal; n++){
 			LoopCurrent=(n%(cores-1)+1);
 			
-			for(j = 0; j < ACols; j++){
-				tmp[j]=A.arr[(ACols*j)];
-			}
-			MPI_Send(&tmp[0],SendAmount, MPI_INT, LoopCurrent, 0, world);
+			
+			MPI_Send(&A.arr[(n*ACols)],SendAmount, MPI_INT, LoopCurrent, 0, world);
 
 		}
 
 		for(n = 1; n < cores; n++){
-			MPI_Send(&B,BRows*BCols, MPI_INT, n, 1, world);
+			
+			MPI_Send(&B.arr[0],BRows*BCols, MPI_INT, n, 1, world);
+			
 		}
 	}
 
-//Sends are good above(maybe)
-//Check how to receive and calculate
-//Note size of C matrix is different
-
-//How are there 4 sends and 3 receives
-
 	if(rank !=0){
+		
 		MPI_Recv(&B.arr[0],BRows*BCols, MPI_INT, 0, 1, world, MPI_STATUS_IGNORE);
 
 		for(n = 0; n <= LoopTotal; n++){
+			
 			LoopCurrent=(n%(cores-1)+1);
-			MPI_Recv(&tmp[0],SendAmount, MPI_INT, 0, MPI_ANY_TAG, world, MPI_STATUS_IGNORE);
+			MPI_Recv(&A.arr[(n*ACols)],SendAmount, MPI_INT, 0, 0, world, MPI_STATUS_IGNORE);
 			for(j = 0; j < ACols; j++){
-				Calc=Calc+(tmp[j]*B.arr[j*BCols]);
+				Calc=Calc+(A.arr[n*j]*B.arr[j*BCols]);
 			}
-			C[LoopCurrent]=Calc;
-			MPI_Send(&C[LoopCurrent],1, MPI_INT, 0, MPI_ANY_TAG, world);
+			
+			C.arr[n]=Calc;
+			MPI_Send(&C.arr[n],1, MPI_INT, 0, 2, world);
 			Calc=0;
+						
 		}
 	}
 
 	if(rank == 0){
-		for(n = 0; n <= LoopTotal; n++){
+		for(n = 0; n < EndMatrixSize; n++){
 			LoopCurrent=(n%(cores-1)+1);
-			MPI_Recv(&tmp[0],SendAmount, MPI_INT, 0, MPI_ANY_TAG, world, MPI_STATUS_IGNORE);
-			for(j = 0; j < ACols; j++){
-				Calc=Calc+(tmp[j]*B.arr[j*BCols]);
-			}
-			C[LoopCurrent]=Calc;
-			MPI_Send(&C[LoopCurrent],1, MPI_INT, 0, MPI_ANY_TAG, world);
-			Calc=0;
+			printf("%d\n",LoopCurrent);
+//Problem is here
+//all printf's were for testing
+			printf("\n---------------------------\n");
+			printMatrix(&C);
+			printf("\n---------------------------\n");
+
+			MPI_Recv(&C.arr[n],1, MPI_INT, LoopCurrent, 2, world, MPI_STATUS_IGNORE);	
+			printf("%d\n",LoopCurrent);	
 		}		
+
+		printf("\n---------------------------\n");
+		printMatrix(&C);
+		printf("\n---------------------------\n");
 	}
 
-	printf("\n---------------------------\n");
-    printMatrix(&A);
-    printf("\n---------------------------\n");
+	
 
 	free(A.arr);
 	free(B.arr);
-	free(C);
+	free(C.arr);
     
 	
     MPI_Finalize();
