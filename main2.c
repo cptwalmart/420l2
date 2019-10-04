@@ -8,55 +8,45 @@
 
 int main(int argc, char **argv)
 {
+	log_init();
 	//Create our matrix A1 = rows A2 = cols
 	int A1 = 20, A2 = 20, B1 = 20, B2 = 20;
 	struct matrix A;
 	struct matrix B;
-	int retval = 0;
+	struct matrix C;
+	struct matrix D;
+	struct matrix E;
 
-	MPI_Init(NULL, NULL);
+	//initialize data fields
+	srand(time(0));
+	initMatrix(&A, A1, A2);
+	printf("printing matrix A\n");
+	printMatrix(&A);
+	//printf("\n");
+	initMatrix(&B, B1, B2);
+	printf("\n printing matrix b\n");
+	printMatrix(&B);
 
-	//init cores
-	int cores;
-	MPI_Comm world = MPI_COMM_WORLD;
-	MPI_Comm_size(world, &cores);
-	int rank;
 
-	//sets rank = to what core
-	MPI_Comm_rank(world, &rank);
-	MPI_Status status;
+	initMatrix(&C, A1, A2);
+	initMatrix(&D, A1, A2);
+	initMatrix(&E, A1, B2);
+	
+	printf("entering matrix add\n");
+	
+	matrixadd(&A, &B, &C, A1, A2);
 
-	if (rank == 0)
-	{
-		//initialize data fields
-		srand(time(0));
-		initMatrix(&A, A1, A2);
-		printf("printing matrix A\n");
-		printMatrix(&A);
-		//printf("\n");
-		initMatrix(&B, B1, B2);
-		printf("\n printing matrix b\n");
-		printMatrix(&B);
-	}
+	printf("exiting matrix add\n");
 
-	matrix C;
-	matrix D;
-	matrix E;
-	C = matrixadd(&A, &B, &status, &world, cores, &rank, A1, A2);
-	printf("matrix add\n");
-	printMatrix(&C);
-	D = matrixsub(&A, &B, &status, &world, cores, &rank, A1, A2);
-	printf("matrix sub\n");
-	printMatrix(&D);
-	E = matrixdotproduct(&A, &B, &status, &world, cores, &rank, A1, A2, B1, B2);
-	printf("matrix mul\n");
-	printMatrix(&E);
+//	matrixsub(&A, &B, &D, &status, &world, cores, &rank, A1, A2);
+//	matrixdotproduct(&A, &B, &E, &status, &world, cores, &rank, A1, A2, B1, B2);
+
 	free(A.arr);
 	free(B.arr);
 	free(C.arr);
 	free(D.arr);
 	free(E.arr);
 	
-	MPI_Finalize();
+
 	return 0;
 }
