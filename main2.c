@@ -42,13 +42,13 @@ int main(int argc, char **argv)
 	matrix C;
 	matrix D;
 	matrix E;
-	C = matrixadd(&A, &B, &status, &world, cores, &rank);
+	C = matrixadd(&A, &B, &status, &world, cores, &rank, A1, A2);
 	printf("matrix add\n");
 	printMatrix(&C);
-	D = matrixsub(&A, &B, &status, &world, cores, &rank);
+	D = matrixsub(&A, &B, &status, &world, cores, &rank, A1, A2);
 	printf("matrix sub\n");
 	printMatrix(&D);
-	E = matrixdotproduct(&A, &B, &status, &world, cores, &rank);
+	E = matrixdotproduct(&A, &B, &status, &world, cores, &rank, A1, A2, B1, B2);
 	printf("matrix mul\n");
 	printMatrix(&E);
 	free(A.arr);
@@ -56,6 +56,7 @@ int main(int argc, char **argv)
 	free(C.arr);
 	free(D.arr);
 	free(E.arr);
+	
 	MPI_Finalize();
 	return 0;
 }

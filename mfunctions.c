@@ -53,20 +53,20 @@ int subMatrix(int c, int d)
     return ans;
 }
 
-matrix matrixdotproduct(matrix *A, matrix *B, MPI_Status *status, MPI_Comm *world, int cores, int *ran)
+matrix matrixdotproduct(matrix *A, matrix *B, MPI_Status *status, MPI_Comm *world, int cores, int *ran, int A1, int A2, int B1, int B2)
 {
     int rank = (*ran);
     //initialize the return matrix
     matrix retval;
-    initMatrix(&retval, A->rows, B->cols);
+    initMatrix(&retval, A1, B2);
 
     int indexcol = 0;
     int indexrow = 0;
-    int sendArows = A->rows / cores;
-    int colLength = A->cols;
+    int sendArows = A1 / cores;
+    int colLength = A1;
     unsigned int sendNum = colLength * sendArows;
     int *C = malloc(sizeof(int) * (sendNum));
-    int *D = malloc(sizeof(int) * (B->rows * B->cols));
+    int *D = malloc(sizeof(int) * (B1 * B2));
     int n, i, j;
     if (rank == 0)
     {
@@ -86,37 +86,37 @@ matrix matrixdotproduct(matrix *A, matrix *B, MPI_Status *status, MPI_Comm *worl
         indexrow = 0;
         for (n = 0; n < cores; n++)
         {
-            for (i = 0; i < B->rows; i++)
+            for (i = 0; i < B1; i++)
             {
-                for (j = 0; j < B->cols; j++)
+                for (j = 0; j < B2; j++)
                 {
-                    D[(B->cols * i) + j] = B->arr[index_calc(B, i, j)];
+                    D[(B1 * i) + j] = B->arr[index_calc(B, i, j)];
                 }
             }
-            MPI_Send(D, B->rows * B->cols, MPI_INT, n, 0, (*world));
+            MPI_Send(D, B1 * B2, MPI_INT, n, 0, (*world));
         }
     }
     MPI_Recv(C, (sendNum), MPI_INT, 0, 0, (*world), status);
-    MPI_Recv(D, B->rows * B->cols, MPI_INT, 0, 0, (*world), status);
+    MPI_Recv(D, B1 * B2, MPI_INT, 0, 0, (*world), status);
     int *E;
     int pos = 0;
     //do for each row
     for (n = 0; n < sendArows; n++)
     {
         //do for each number in a row
-        for (i = 0; i < A->rows; i++)
+        for (i = 0; i < A1; i++)
         {
             //for each column
-            for (j = 0; j < B->cols; j++)
+            for (j = 0; j < B2; j++)
             {
-                retval.arr[index_calc(&retval, n, pos)] += C[(colLength * n) + i] * D[(B->cols * j)];
+                retval.arr[index_calc(&retval, n, pos)] += C[(colLength * n) + i] * D[(B2 * j)];
                 pos++;
             }
             pos = 0;
         }
     }
     E = retval.arr;
-    MPI_Send(E, A->rows * B->cols, MPI_INT, 0, 0, (*world));
+    MPI_Send(E, A1 * B2, MPI_INT, 0, 0, (*world));
     free(E);
     free(C);
     if (rank != 0)
@@ -126,21 +126,21 @@ matrix matrixdotproduct(matrix *A, matrix *B, MPI_Status *status, MPI_Comm *worl
     //handle cases in which the problem is not perfectly divisable by the number of cores
     int offSet = 0;
     int stopPoint = 0;
-    if (rank == 0 && (A->rows % cores) > 0)
+    if (rank == 0 && (A1 % cores) > 0)
     {
         offSet = sendArows * cores;
-        stopPoint = (A->rows % cores);
+        stopPoint = (A1 % cores);
 
         //do for each row
         for (n = 0; n < stopPoint; n++)
         {
             //do for each number in a row
-            for (i = 0; i < A->rows; i++)
+            for (i = 0; i < A1; i++)
             {
                 //for each column
-                for (j = 0; j < B->cols; j++)
+                for (j = 0; j < B2; j++)
                 {
-                    retval.arr[index_calc(&retval, n + offSet, pos)] += A->arr[(colLength * (n + offSet)) + i] * B->arr[(B->cols * j)];
+                    retval.arr[index_calc(&retval, n + offSet, pos)] += A->arr[(colLength * (n + offSet)) + i] * B->arr[(B2  * j)];
                     pos++;
                 }
                 pos = 0;
@@ -151,7 +151,7 @@ matrix matrixdotproduct(matrix *A, matrix *B, MPI_Status *status, MPI_Comm *worl
     {
         for (n = 0; n < cores; n++)
         {
-            MPI_Recv(D, A->rows * B->cols, MPI_INT, n, 0, (*world), status);
+            MPI_Recv(D, A1 * B2, MPI_INT, n, 0, (*world), status);
             for (i = 0; i < retval.rows; i++)
             {
                 for (j = 0; j < retval.cols; j++)
@@ -165,13 +165,13 @@ matrix matrixdotproduct(matrix *A, matrix *B, MPI_Status *status, MPI_Comm *worl
     return retval;
 }
 
-matrix matrixadd(matrix *A, matrix *B, MPI_Status *status, MPI_Comm *world, int cores, int *ran)
+matrix matrixadd(matrix *A, matrix *B, MPI_Status *status, MPI_Comm *world, int cores, int *ran, int A1, int A2)
 {
     int rank = (*ran);
     int indexcol = 0;
     int indexrow = 0;
-    int sendArows = A->rows / cores;
-    int colLength = A->cols;
+    int sendArows = A1 / cores;
+    int colLength = A2;
     unsigned int sendNum = colLength * sendArows;
     int *C = malloc(sizeof(int) * (sendNum));
     int *D = malloc(sizeof(int) * (sendNum));
@@ -222,11 +222,11 @@ matrix matrixadd(matrix *A, matrix *B, MPI_Status *status, MPI_Comm *world, int 
     int remainderFlag = 0;
     int offSet = 0;
     int stopPoint = 0;
-    if (rank == 0 && (A->rows % cores) > 0)
+    if (rank == 0 && (A1 % cores) > 0)
     {
         remainderFlag = 1;
         offSet = sendArows * cores;
-        stopPoint = (A->rows % cores);
+        stopPoint = (A1 % cores);
         int x = 0;
         for (i = 0; i < stopPoint; i++)
         {
@@ -238,7 +238,7 @@ matrix matrixadd(matrix *A, matrix *B, MPI_Status *status, MPI_Comm *world, int 
     }
 
     struct matrix F;
-    initMatrix(&F, A->rows, A->cols);
+    initMatrix(&F, A1, A2);
 
     if (rank == 0)
     {
@@ -272,13 +272,13 @@ matrix matrixadd(matrix *A, matrix *B, MPI_Status *status, MPI_Comm *world, int 
     return F;
 }
 
-matrix matrixsub(matrix *A, matrix *B, MPI_Status *status, MPI_Comm *world, int cores, int *ran)
+matrix matrixsub(matrix *A, matrix *B, MPI_Status *status, MPI_Comm *world, int cores, int *ran, int A1, int A2)
 {
     int rank = (*ran);
     int indexcol = 0;
     int indexrow = 0;
-    int sendArows = A->rows / cores;
-    int colLength = A->cols;
+    int sendArows = A1 / cores;
+    int colLength = A2;
     unsigned int sendNum = colLength * sendArows;
     int *C = malloc(sizeof(int) * (sendNum));
     int *D = malloc(sizeof(int) * (sendNum));
@@ -329,11 +329,11 @@ matrix matrixsub(matrix *A, matrix *B, MPI_Status *status, MPI_Comm *world, int 
     int remainderFlag = 0;
     int offSet = 0;
     int stopPoint = 0;
-    if (rank == 0 && (A->rows % cores) > 0)
+    if (rank == 0 && (A1 % cores) > 0)
     {
         remainderFlag = 1;
         offSet = sendArows * cores;
-        stopPoint = (A->rows % cores);
+        stopPoint = (A2 % cores);
         int x = 0;
         for (i = 0; i < stopPoint; i++)
         {
@@ -345,7 +345,7 @@ matrix matrixsub(matrix *A, matrix *B, MPI_Status *status, MPI_Comm *world, int 
     }
 
     struct matrix F;
-    initMatrix(&F, A->rows, A->cols);
+    initMatrix(&F, A1, A2);
 
     if (rank == 0)
     {
