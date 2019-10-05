@@ -13,11 +13,11 @@ void printMatrix(matrix *A);
 
 int index_calc(matrix *A, int i, int j);
 
-//void matrixsub(matrix *A, matrix *B, matrix *ans, MPI_Status *status, MPI_Comm world, int cores, int *ran, int A1, int A2);
+void matrixsub(matrix *A, matrix *B, matrix *ans, MPI_Status *status, MPI_Comm world, int cores, int *ran, int A1, int A2);
 
-void matrixadd(matrix *A, matrix *B, matrix *ans, int A1, int A2);
+void matrixadd(matrix *A, matrix *B, matrix *ans, MPI_Status *status, MPI_Comm world, int cores, int *ran, int A1, int A2);
 
-//void matrixdotproduct(matrix *A, matrix *B, matrix *ans, MPI_Status *status, MPI_Comm world, int cores, int *ran, int A1, int A2, int B1, int B2);
+void matrixdotproduct(matrix *A, matrix *B, matrix *ans, MPI_Status *status, MPI_Comm world, int cores, int *ran, int A1, int A2, int B1, int B2);
 
 #include <stdio.h>
 void log_init();

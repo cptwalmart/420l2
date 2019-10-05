@@ -82,7 +82,7 @@ int subMatrix(int c, int d)
     return ans;
 }
 
-void matrixdotproduct(matrix *A, matrix *B, matrix *ans, MPI_Status *status, MPI_Comm *world, int cores, int *ran, int A1, int A2, int B1, int B2)
+void matrixdotproduct(matrix *A, matrix *B, matrix *ans, MPI_Status *status, MPI_Comm world, int cores, int *ran, int A1, int A2, int B1, int B2)
 {
     int rank = (*ran);
     int indexcol = 0;
@@ -105,7 +105,7 @@ void matrixdotproduct(matrix *A, matrix *B, matrix *ans, MPI_Status *status, MPI
                 }
             }
             indexrow += sendArows;
-            MPI_Send(C, (sendNum), MPI_INT, n, 0, (*world));
+            MPI_Send(C, (sendNum), MPI_INT, n, 0, (world));
         }
         indexcol = 0;
         indexrow = 0;
@@ -118,11 +118,11 @@ void matrixdotproduct(matrix *A, matrix *B, matrix *ans, MPI_Status *status, MPI
                     D[(B1 * i) + j] = B->arr[index_calc(B, i, j)];
                 }
             }
-            MPI_Send(D, B1 * B2, MPI_INT, n, 0, (*world));
+            MPI_Send(D, B1 * B2, MPI_INT, n, 0, (world));
         }
     }
-    MPI_Recv(C, (sendNum), MPI_INT, 0, 0, (*world), status);
-    MPI_Recv(D, B1 * B2, MPI_INT, 0, 0, (*world), status);
+    MPI_Recv(C, (sendNum), MPI_INT, 0, 0, (world), status);
+    MPI_Recv(D, B1 * B2, MPI_INT, 0, 0, (world), status);
     int *E;
     int pos = 0;
     //do for each row
@@ -141,7 +141,7 @@ void matrixdotproduct(matrix *A, matrix *B, matrix *ans, MPI_Status *status, MPI
         }
     }
     E = ans->arr;
-    MPI_Send(E, A1 * B2, MPI_INT, 0, 0, (*world));
+    MPI_Send(E, A1 * B2, MPI_INT, 0, 0, (world));
     free(E);
     free(C);
     //handle cases in which the problem is not perfectly divisable by the number of cores
@@ -172,7 +172,7 @@ void matrixdotproduct(matrix *A, matrix *B, matrix *ans, MPI_Status *status, MPI
     {
         for (n = 0; n < cores; n++)
         {
-            MPI_Recv(D, A1 * B2, MPI_INT, n, 0, (*world), status);
+            MPI_Recv(D, A1 * B2, MPI_INT, n, 0, (world), status);
             for (i = 0; i < A1; i++)
             {
                 for (j = 0; j < B2; j++)
@@ -185,124 +185,116 @@ void matrixdotproduct(matrix *A, matrix *B, matrix *ans, MPI_Status *status, MPI
     free(D);
 }
 
-void matrixadd(matrix *A, matrix *B, matrix *ans, int A1, int A2)
+void matrixadd(matrix *A, matrix *B, matrix *ans, MPI_Status *status, MPI_Comm world, int cores, int *ran, int A1, int A2)
 {
-	MPI_Init(NULL, NULL);
-	
-	//init cores
-	int cores;
-	MPI_Comm world = MPI_COMM_WORLD;
-	MPI_Comm_size(world, &cores);
-	int rank;
-	
-	//sets rank = to what core
-	MPI_Comm_rank(world, &rank);
-	log_set_rank(rank);
-	MPI_Status stat;
-	MPI_Status * status = &stat;
-	
-	int indexcol = 0;
-	int indexrow = 0;
-	int sendArows = A1 / cores;
-	int colLength = A2;
-	unsigned int sendNum = colLength * sendArows;
-	int *C = malloc(sizeof(int) * (sendNum));
-	int *D = malloc(sizeof(int) * (sendNum));
-	int n, i, j;
-	if (rank == 0)
-	{
-		for (n = 0; n < cores; n++)
-		{
-			for (i = indexrow; i < (indexrow + sendArows); i++)
-			{
-				for (j = indexcol; j < colLength; j++)
-				{
-					C[(sendArows * (i % sendArows)) + j] = A->arr[index_calc(A, i, j)];
-				}
-			}
-			indexrow += sendArows;
-			MPI_Send(C, (sendNum), MPI_INT, n, 0, world);
-		}
-		indexcol = 0;
-		indexrow = 0;
-		for (n = 0; n < cores; n++)
-		{
-			for (i = indexrow; i < (indexrow + sendArows); i++)
-			{
-				for (j = indexcol; j < colLength; j++)
-				{
-					C[(sendArows * (i % sendArows)) + j] = B->arr[index_calc(B, i, j)];
-				}
-			}
-			indexrow += sendArows;
-			MPI_Send(C, (sendNum), MPI_INT, n, 0, world);
-		}
-	}
-	MPI_Recv(C, (sendNum), MPI_INT, 0, 0, world, status);
-	MPI_Recv(D, (sendNum), MPI_INT, 0, 0, world, status);
-	int *E = malloc(sizeof(int) * (sendNum));
-	for (i = 0; i < sendArows; i++)
-	{
-		for (j = 0; j < colLength; j++)
-		{
-			E[(colLength * i) + j] = addMatrix((C[(colLength * i) + j]), (D[(colLength * i) + j]));
-		}
-	}
-	MPI_Send(E, (sendNum), MPI_INT, 0, 0, world);
-	free(C);
-	
-	//handle cases in which the problem is not perfectly divisable by the number of cores
-	int remainderFlag = 0;
-	int offSet = 0;
-	int stopPoint = 0;
-	if(rank == 0 && (A1 % cores) > 0)
-	{
-		remainderFlag = 1;
-		offSet = sendArows * cores;
-		stopPoint = (A1 % cores);
-		int x = 0;
-		for (i = 0; i < stopPoint; i++)
-		{
-			for (j = 0; j < colLength; j++)
-			{
-				E[(colLength * i) + j] = addMatrix((A->arr[index_calc(A, i + offSet, j)]), (B->arr[index_calc(B, i + offSet, j)]));
-			}
-		}
-	}
-	
-	if (rank == 0)
-	{
-		indexcol = 0;
-		indexrow = 0;
-		for (n = 0; n < cores; n++)
-		{
-			MPI_Recv(D, (sendNum), MPI_INT, n, 0, world, status);
-			for (i = indexrow; i < (indexrow + sendArows); i++)
-			{
-				for (j = indexcol; j < colLength; j++)
-				{
-					ans->arr[index_calc(ans, i, j)] = D[(sendArows * (i % sendArows)) + j];
-				}
-			}
-			indexrow += sendArows;
-		}
-		if(remainderFlag)
-		{
-			for(n = 0; n < stopPoint; n++)
-			{
-				for(j = 0; j< colLength; j++)
-				{
-					ans->arr[index_calc(ans, n + offSet, j)] = E[(colLength * n) + j];
-				}
-			}
-		}
-	}
-	free(D);
-	free(E);
-	MPI_Finalize();
+    int rank = (*ran);
+    int indexcol = 0;
+    int indexrow = 0;
+    int sendArows = A1 / cores;
+    int colLength = A2;
+    unsigned int sendNum = colLength * sendArows;
+    int *C = malloc(sizeof(int) * (sendNum));
+    int *D = malloc(sizeof(int) * (sendNum));
+    int n, i, j;
+    if (rank == 0)
+    {
+        LOG("%d:Beginning matrix add first loop\n.",rank);
+        for (n = 0; n < cores; n++)
+        {
+            for (i = indexrow; i < (indexrow + sendArows); i++)
+            {
+                for (j = indexcol; j < colLength; j++)
+                {
+                    C[(sendArows * (i % sendArows)) + j] = A->arr[index_calc(A, i, j)];
+                }
+            }
+            indexrow += sendArows;
+            MPI_Send(C, (sendNum), MPI_INT, n, 0, (world));
+        }
+        indexcol = 0;
+        indexrow = 0;
+        LOG("%d:Beginning matrix add sec loop\n.",rank);
+        for (n = 0; n < cores; n++)
+        {
+            for (i = indexrow; i < (indexrow + sendArows); i++)
+            {
+                for (j = indexcol; j < colLength; j++)
+                {
+                    C[(sendArows * (i % sendArows)) + j] = B->arr[index_calc(B, i, j)];
+                }
+            }
+            indexrow += sendArows;
+            MPI_Send(C, (sendNum), MPI_INT, n, 0, (world));
+        }
+    }
+    MPI_Recv(C, (sendNum), MPI_INT, 0, 0, (world), status);
+    MPI_Recv(D, (sendNum), MPI_INT, 0, 0, (world), status);
+    int *E = malloc(sizeof(int) * (sendNum));
+    LOG("%d:Beginning matrix add third loop\n.",rank);
+    for (i = 0; i < sendArows; i++)
+    {
+        for (j = 0; j < colLength; j++)
+        {
+            E[(colLength * i) + j] = addMatrix((C[(colLength * i) + j]), (D[(colLength * i) + j]));
+        }
+    }
+    MPI_Send(E, (sendNum), MPI_INT, 0, 0, (world));
+    free(C);
+
+    //handle cases in which the problem is not perfectly divisable by the number of cores
+    int remainderFlag = 0;
+    int offSet = 0;
+    int stopPoint = 0;
+    LOG("%d:Beginning matrix add fourth loop\n.",rank);
+    if (rank == 0 && (A1 % cores) > 0)
+    {
+        remainderFlag = 1;
+        offSet = sendArows * cores;
+        stopPoint = (A1 % cores);
+        int x = 0;
+        for (i = 0; i < stopPoint; i++)
+        {
+            for (j = 0; j < colLength; j++)
+            {
+                E[(colLength * i) + j] = addMatrix((A->arr[index_calc(A, i + offSet, j)]), (B->arr[index_calc(B, i + offSet, j)]));
+            }
+        }
+    }
+
+    if (rank == 0)
+    {
+        indexcol = 0;
+        indexrow = 0;
+        LOG("%d:Beginning matrix add fifth loop\n.",rank);
+        for (n = 0; n < cores; n++)
+        {
+            MPI_Recv(D, (sendNum), MPI_INT, n, 0, (world), status);
+            for (i = indexrow; i < (indexrow + sendArows); i++)
+            {
+                for (j = indexcol; j < colLength; j++)
+                {
+                    ans->arr[index_calc(ans, i, j)] = D[(sendArows * (i % sendArows)) + j];
+                }
+            }
+            indexrow += sendArows;
+        }
+        LOG("%d:Beginning matrix add sixth loop\n.",rank);
+        if (remainderFlag)
+        {
+            for (n = 0; n < stopPoint; n++)
+            {
+                for (j = 0; j < colLength; j++)
+                {
+                    ans->arr[index_calc(ans, n + offSet, j)] = E[(colLength * n) + j];
+                }
+            }
+        }
+    }
+    free(D);
+    free(E);
 }
 
-void matrixsub(matrix *A, matrix *B, matrix *ans, MPI_Status *status, MPI_Comm *world, int cores, int *ran, int A1, int A2)
+void matrixsub(matrix *A, matrix *B, matrix *ans, MPI_Status *status, MPI_Comm world, int cores, int *ran, int A1, int A2)
 {
     int rank = (*ran);
     int indexcol = 0;
@@ -325,7 +317,7 @@ void matrixsub(matrix *A, matrix *B, matrix *ans, MPI_Status *status, MPI_Comm *
                 }
             }
             indexrow += sendArows;
-            MPI_Send(C, (sendNum), MPI_INT, n, 0, (*world));
+            MPI_Send(C, (sendNum), MPI_INT, n, 0, (world));
         }
         indexcol = 0;
         indexrow = 0;
@@ -339,11 +331,11 @@ void matrixsub(matrix *A, matrix *B, matrix *ans, MPI_Status *status, MPI_Comm *
                 }
             }
             indexrow += sendArows;
-            MPI_Send(C, (sendNum), MPI_INT, n, 0, (*world));
+            MPI_Send(C, (sendNum), MPI_INT, n, 0, (world));
         }
     }
-    MPI_Recv(C, (sendNum), MPI_INT, 0, 0, (*world), status);
-    MPI_Recv(D, (sendNum), MPI_INT, 0, 0, (*world), status);
+    MPI_Recv(C, (sendNum), MPI_INT, 0, 0, (world), status);
+    MPI_Recv(D, (sendNum), MPI_INT, 0, 0, (world), status);
     int *E = malloc(sizeof(int) * (sendNum));
     for (i = 0; i < sendArows; i++)
     {
@@ -352,7 +344,7 @@ void matrixsub(matrix *A, matrix *B, matrix *ans, MPI_Status *status, MPI_Comm *
             E[(colLength * i) + j] = subMatrix((C[(colLength * i) + j]), (D[(colLength * i) + j]));
         }
     }
-    MPI_Send(E, (sendNum), MPI_INT, 0, 0, (*world));
+    MPI_Send(E, (sendNum), MPI_INT, 0, 0, (world));
     free(C);
 
     //handle cases in which the problem is not perfectly divisable by the number of cores
@@ -380,7 +372,7 @@ void matrixsub(matrix *A, matrix *B, matrix *ans, MPI_Status *status, MPI_Comm *
         indexrow = 0;
         for (n = 0; n < cores; n++)
         {
-            MPI_Recv(D, (sendNum), MPI_INT, n, 0, (*world), status);
+            MPI_Recv(D, (sendNum), MPI_INT, n, 0, (world), status);
             for (i = indexrow; i < (indexrow + sendArows); i++)
             {
                 for (j = indexcol; j < colLength; j++)
